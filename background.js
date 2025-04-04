@@ -23,19 +23,70 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 });
 
 // Listen for clicks on the extension icon
-chrome.action.onClicked.addListener((tab) => {
+chrome.action.onClicked.addListener(async (tab) => {
     if (tab.url && !isExcludedDomain(tab.url)) {
-        chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" });
+        try {
+            // Check if we can access the tab
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => true
+            });
+
+            // If we can access the tab, send the message
+            chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" }).catch(error => {
+                // If content script is not loaded yet, inject it
+                if (error.message.includes("Receiving end does not exist")) {
+                    chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        files: ['content.js']
+                    }).then(() => {
+                        // Try sending the message again after injection
+                        setTimeout(() => {
+                            chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" });
+                        }, 100);
+                    });
+                }
+            });
+        } catch (error) {
+            console.log("Cannot access this tab:", error);
+        }
     }
 });
 
 // Listen for keyboard shortcuts
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener(async (command) => {
     if (command === "toggle_sidebar") {
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            if (tabs[0] && !isExcludedDomain(tabs[0].url)) {
-                chrome.tabs.sendMessage(tabs[0].id, { action: "toggle_sidebar" });
+        try {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tab && !isExcludedDomain(tab.url)) {
+                try {
+                    // Check if we can access the tab
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        func: () => true
+                    });
+
+                    // If we can access the tab, send the message
+                    chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" }).catch(error => {
+                        // If content script is not loaded yet, inject it
+                        if (error.message.includes("Receiving end does not exist")) {
+                            chrome.scripting.executeScript({
+                                target: { tabId: tab.id },
+                                files: ['content.js']
+                            }).then(() => {
+                                // Try sending the message again after injection
+                                setTimeout(() => {
+                                    chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" });
+                                }, 100);
+                            });
+                        }
+                    });
+                } catch (error) {
+                    console.log("Cannot access this tab:", error);
+                }
             }
-        });
+        } catch (error) {
+            console.error('Error in command listener:', error);
+        }
     }
 });

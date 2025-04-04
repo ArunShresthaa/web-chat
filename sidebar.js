@@ -144,7 +144,52 @@ document.addEventListener('DOMContentLoaded', function () {
             // Parse markdown for bot messages
             const markdownDiv = document.createElement('div');
             markdownDiv.className = 'markdown-content';
-            markdownDiv.innerHTML = marked.parse(text);
+
+            // Configure marked with safe options
+            marked.setOptions({
+                headerIds: false, // Disable header IDs to prevent XSS via anchor tags
+                mangle: false,    // Disable mangling to prevent XSS via header IDs
+            });
+
+            // Create a custom marked extension for additional security
+            const renderer = new marked.Renderer();
+
+            // Secure link rendering
+            renderer.link = (href, title, text) => {
+                // Only allow http, https protocols
+                if (!/^https?:\/\//i.test(href)) {
+                    return text;
+                }
+                return `<a href="${href}" title="${title || ''}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+            };
+
+            // Secure image rendering
+            renderer.image = (href, title, text) => {
+                // Only allow http, https protocols
+                if (!/^https?:\/\//i.test(href)) {
+                    return text;
+                }
+                return `<img src="${href}" alt="${text}" title="${title || ''}" />`;
+            };
+
+            marked.setOptions({ renderer });
+
+            // Parse markdown and sanitize with DOMPurify
+            const htmlContent = marked.parse(text);
+            const sanitizedHtml = DOMPurify.sanitize(htmlContent, {
+                ALLOWED_TAGS: [
+                    'p', 'br', 'b', 'i', 'em', 'strong', 'code', 'pre',
+                    'a', 'ul', 'ol', 'li', 'blockquote', 'h1', 'h2', 'h3',
+                    'h4', 'h5', 'h6', 'hr', 'img'
+                ],
+                ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class'],
+                ALLOW_DATA_ATTR: false,
+                ADD_ATTR: {
+                    'a': 'target="_blank" rel="noopener noreferrer"'
+                }
+            });
+
+            markdownDiv.innerHTML = sanitizedHtml;
             messageContent.appendChild(markdownDiv);
 
             // Apply syntax highlighting to code blocks
