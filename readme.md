@@ -97,6 +97,7 @@ git clone [repository-url]
 
 ### Project Structure
 
+```
 ├── manifest.json
 ├── background.js
 ├── content.js
@@ -107,6 +108,7 @@ git clone [repository-url]
 ├── marked.min.js
 ├── highlight.min.js
 └── highlight.min.css
+```
 
 ### Building
 
@@ -124,3 +126,5 @@ No build process required - the extension can be loaded directly as unpacked.
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
+
+[MIT License](LICENSE)
