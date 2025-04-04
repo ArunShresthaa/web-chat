@@ -1,0 +1,37 @@
+<!-- sidebar.html -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Website Content Chat</title>
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <div class="sidebar-container">
+    <div class="sidebar-header">
+      <h2>Website Chat</h2>
+      <button id="close-btn">×</button>
+    </div>
+    
+    <div class="api-key-container" id="api-key-container">
+      <h3>Enter Gemini API Key</h3>
+      <input type="password" id="api-key-input" placeholder="Enter your Gemini API key">
+      <button id="save-api-key">Save</button>
+    </div>
+    
+    <div class="chat-container" id="chat-container" style="display: none;">
+      <div class="chat-messages" id="chat-messages">
+        <div class="message system">
+          Hello! I can help you chat with the content of this page. What would you like to know?
+        </div>
+      </div>
+      
+      <div class="chat-input-container">
+        <textarea id="user-input" placeholder="Type your message..."></textarea>
+        <button id="send-button">Send</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="sidebar.js"></script>
+</body>
+</html>
