@@ -40,11 +40,23 @@
     "web_accessible_resources": [
         {
             "resources": [
-                "sidebar.html"
+                "sidebar.html",
+                "lib/highlight.min.js",
+                "lib/highlight.min.css",
+                "lib/marked.min.js"
             ],
             "matches": [
                 "<all_urls>"
             ]
         }
-    ]
+    ],
+    "commands": {
+        "toggle_sidebar": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+S",
+                "mac": "Command+Shift+S"
+            },
+            "description": "Toggle the website chat sidebar"
+        }
+    }
 }

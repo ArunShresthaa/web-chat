@@ -28,6 +28,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
+// Add this event listener to handle messages from the sidebar
+window.addEventListener('message', function (event) {
+    // Verify the message origin if needed
+    if (event.data.action === "close_sidebar") {
+        closeSidebar();
+    }
+});
+
 function openSidebar() {
     if (!sidebarIframe) {
         // Create iframe for sidebar
@@ -56,15 +64,11 @@ function openSidebar() {
 
 function closeSidebar() {
     if (sidebarIframe) {
-        // Animate sidebar closing
         sidebarIframe.style.right = '-350px';
-
-        // Remove iframe after animation completes
         setTimeout(() => {
             document.body.removeChild(sidebarIframe);
             sidebarIframe = null;
-        }, 300);
+        }, 300); // Match the transition duration
+        sidebarOpen = false;
     }
-
-    sidebarOpen = false;
 }
