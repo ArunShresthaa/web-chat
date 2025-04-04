@@ -197,6 +197,9 @@
     border-radius: 12px;
     font-size: 14px;
     line-height: 1.5;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
   }
   
   .user .message-content {
@@ -342,6 +345,9 @@
   .markdown-content a {
     color: var(--primary-color);
     text-decoration: none;
+    word-break: break-all;
+    max-width: 100%;
+    display: inline-block;
   }
   
   .markdown-content a:hover {
