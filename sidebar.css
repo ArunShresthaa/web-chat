@@ -400,3 +400,19 @@
   #clear-chat:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
+  
+  #website-chat-resize-handle {
+    background-color: transparent;
+    transition: background-color 0.2s;
+  }
+  
+  #website-chat-resize-handle:hover,
+  #website-chat-resize-handle:active {
+    background-color: var(--primary-color);
+    opacity: 0.5;
+  }
+  
+  #resize-overlay {
+    cursor: ew-resize;
+    background: transparent;
+  }
