@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let pageTitle = '';
     let pageUrl = '';
     let apiKey = '';
+    let chatHistory = []; // Add this to store conversation history
 
     // Configure marked.js for markdown parsing
     marked.setOptions({
@@ -119,7 +120,20 @@ document.addEventListener('DOMContentLoaded', function () {
         sendToGeminiAPI(message, loadingDiv);
     }
 
+    // Add this function to manage chat history
+    function addToChatHistory(role, content) {
+        chatHistory.push({ role, content });
+        // Limit history to last 10 messages to prevent token limits
+        if (chatHistory.length > 10) {
+            chatHistory.shift();
+        }
+    }
+
+    // Modify appendMessage to also add to history
     function appendMessage(text, sender) {
+        // Add to chat history
+        addToChatHistory(sender === 'user' ? 'user' : 'assistant', text);
+
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${sender}`;
 
@@ -147,33 +161,42 @@ document.addEventListener('DOMContentLoaded', function () {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // Modify sendToGeminiAPI to include chat history
     function sendToGeminiAPI(userQuery, loadingElement) {
+        // Create conversation context from history
+        const conversationContext = chatHistory
+            .map(msg => `${msg.role}: ${msg.content}`)
+            .join('\n\n');
+
         const prompt = `
-        You are a helpful assistant that answers questions about webpage content.
-        
-        Current webpage: "${pageTitle}"
-        URL: ${pageUrl}
-        
-        Content of the webpage:
-        '''
-        ${pageContent.substring(0, 12000)} // Limiting content length to avoid token limits
-        '''
-        
-        User query: ${userQuery}
-        
-        Please answer the user's question based on the webpage content. 
-        If the answer isn't in the content, politely say so.
-        
-        IMPORTANT: Format your response using Markdown to improve readability.
-        - Use headings (##, ###) for organization
-        - Use **bold** or *italic* for emphasis
-        - Use \`code\` for technical terms or snippets
-        - Use bullet points or numbered lists for multiple items
-        - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
-        - Use > for quotations from the page
-        
-        But keep your response concise and focused on answering the query.
-      `;
+            You are a helpful assistant that answers questions about webpage content.
+            
+            Current webpage: "${pageTitle}"
+            URL: ${pageUrl}
+            
+            Previous conversation context:
+            ${conversationContext}
+            
+            Content of the webpage:
+            '''
+            ${pageContent.substring(0, 12000)}
+            '''
+            
+            User query: ${userQuery}
+            
+            Please answer the user's question based on the webpage content and previous conversation context.
+            If the answer isn't in the content, politely say so.
+            
+            IMPORTANT: Format your response using Markdown to improve readability.
+            - Use headings (##, ###) for organization
+            - Use **bold** or *italic* for emphasis
+            - Use \`code\` for technical terms or snippets
+            - Use bullet points or numbered lists for multiple items
+            - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
+            - Use > for quotations from the page
+            
+            But keep your response concise and focused on answering the query.
+        `;
 
         fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -209,4 +232,33 @@ document.addEventListener('DOMContentLoaded', function () {
                 console.error('Error:', error);
             });
     }
+
+    // Add function to clear chat history
+    function clearChat() {
+        chatHistory = [];
+        chatMessages.innerHTML = '';
+        // Add initial welcome message
+        appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+    }
+
+    // Add a clear chat button to the UI
+    function addClearChatButton() {
+        const headerLogo = document.querySelector('.header-logo');
+        const clearButton = document.createElement('button');
+        clearButton.id = 'clear-chat';
+        clearButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18"></path>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            </svg>
+        `;
+        clearButton.setAttribute('aria-label', 'Clear chat');
+        clearButton.addEventListener('click', clearChat);
+        headerLogo.appendChild(clearButton);
+    }
+
+    // Call this when the page loads
+    addClearChatButton();
 });

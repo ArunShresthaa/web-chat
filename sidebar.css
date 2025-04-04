@@ -382,3 +382,21 @@
     max-width: 100%;
     height: auto;
   }
+  
+  #clear-chat {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: 8px;
+    transition: background-color 0.2s;
+  }
+  
+  #clear-chat:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
