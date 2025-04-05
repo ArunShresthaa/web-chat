@@ -94,8 +94,22 @@ document.addEventListener('DOMContentLoaded', function () {
                 pageTitle = response.title;
                 pageUrl = response.url;
 
-                // Add a welcome message with the page title
-                appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+                // Check if this is a YouTube video with transcript
+                if (response.isYouTubeVideo) {
+                    // Store transcript in context for the chat
+                    if (response.transcript) {
+                        pageContent = `[VIDEO TRANSCRIPT]: ${response.transcript}\n\n[PAGE CONTENT]: ${pageContent}`;
+
+                        // Add a welcome message specific to YouTube videos
+                        appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. I have access to the video transcript. What would you like to discuss about this video?`, 'bot');
+                    } else {
+                        // No transcript available
+                        appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. What would you like to discuss about this video?`, 'bot');
+                    }
+                } else {
+                    // Regular page content
+                    appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+                }
             }
         });
     }
@@ -211,42 +225,76 @@ document.addEventListener('DOMContentLoaded', function () {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Modify sendToGeminiAPI to include chat history
+    // Modify sendToGeminiAPI to include chat history and handle YouTube transcripts
     function sendToGeminiAPI(userQuery, loadingElement) {
         // Create conversation context from history
         const conversationContext = chatHistory
             .map(msg => `${msg.role}: ${msg.content}`)
             .join('\n\n');
 
-        const prompt = `
-            You are a helpful assistant that answers questions about webpage content.
-            
-            Current webpage: "${pageTitle}"
-            URL: ${pageUrl}
-            
-            Previous conversation context:
-            ${conversationContext}
-            
-            Content of the webpage:
-            '''
-            ${pageContent.substring(0, 12000)}
-            '''
-            
-            User query: ${userQuery}
-            
-            Please answer the user's question based on the webpage content and previous conversation context.
-            If the answer isn't in the content, politely say so.
-            
-            IMPORTANT: Format your response using Markdown to improve readability.
-            - Use headings (##, ###) for organization
-            - Use **bold** or *italic* for emphasis
-            - Use \`code\` for technical terms or snippets
-            - Use bullet points or numbered lists for multiple items
-            - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
-            - Use > for quotations from the page
-            
-            But keep your response concise and focused on answering the query.
-        `;
+        // Check if this is a YouTube video page by looking for transcript in content
+        const isYouTubeVideo = pageContent.includes('[VIDEO TRANSCRIPT]:');
+
+        let prompt;
+
+        if (isYouTubeVideo) {
+            prompt = `
+                You are a helpful assistant that answers questions about YouTube videos based on their transcripts.
+                
+                Current video: "${pageTitle}"
+                URL: ${pageUrl}
+                
+                Previous conversation context:
+                ${conversationContext}
+                
+                ${pageContent.substring(0, 15000)}
+                
+                User query: ${userQuery}
+                
+                Please answer the user's question based on the video transcript and previous conversation context.
+                If the answer isn't in the transcript, politely say so.
+                If asked about visual elements not described in the transcript, explain that you can only access the spoken content.
+                
+                IMPORTANT: Format your response using Markdown to improve readability.
+                - Use headings (##, ###) for organization
+                - Use **bold** or *italic* for emphasis
+                - Use \`code\` for technical terms or snippets
+                - Use bullet points or numbered lists for multiple items
+                - Use > for quotations from the transcript
+                
+                Keep your response concise and focused on answering the query.
+            `;
+        } else {
+            prompt = `
+                You are a helpful assistant that answers questions about webpage content.
+                
+                Current webpage: "${pageTitle}"
+                URL: ${pageUrl}
+                
+                Previous conversation context:
+                ${conversationContext}
+                
+                Content of the webpage:
+                '''
+                ${pageContent.substring(0, 12000)}
+                '''
+                
+                User query: ${userQuery}
+                
+                Please answer the user's question based on the webpage content and previous conversation context.
+                If the answer isn't in the content, politely say so.
+                
+                IMPORTANT: Format your response using Markdown to improve readability.
+                - Use headings (##, ###) for organization
+                - Use **bold** or *italic* for emphasis
+                - Use \`code\` for technical terms or snippets
+                - Use bullet points or numbered lists for multiple items
+                - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
+                - Use > for quotations from the page
+                
+                But keep your response concise and focused on answering the query.
+            `;
+        }
 
         fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
@@ -287,8 +335,17 @@ document.addEventListener('DOMContentLoaded', function () {
     function clearChat() {
         chatHistory = [];
         chatMessages.innerHTML = '';
-        // Add initial welcome message
-        appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+
+        // Check if this is a YouTube video page
+        const isYouTubeVideo = pageContent.includes('[VIDEO TRANSCRIPT]:');
+
+        // Add initial welcome message based on page type
+        if (isYouTubeVideo) {
+            appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. I have access to the video transcript. What would you like to discuss about this video?`, 'bot');
+        } else {
+            // Regular page content
+            appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+        }
     }
 
     // Add a clear chat button to the UI

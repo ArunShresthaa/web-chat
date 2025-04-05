@@ -1,6 +1,57 @@
 // content.js
 let sidebarOpen = false;
 let sidebarIframe = null;
+let videoTranscript = null;
+let configIsReady = false;
+
+// Function to check if config is available and set up YouTube handlers
+function ensureConfigLoaded(retryCount = 0, maxRetries = 5) {
+    if (typeof config !== 'undefined' && config) {
+        configIsReady = true;
+        return Promise.resolve(true);
+    }
+
+    // If we've exceeded max retries, return a rejected promise
+    if (retryCount >= maxRetries) {
+        return Promise.reject(new Error('Config failed to load after multiple attempts'));
+    }
+
+    // Implement exponential backoff - wait longer between each retry
+    const delay = Math.min(100 * Math.pow(2, retryCount), 3000); // Max 3 second delay
+
+    return new Promise(resolve => {
+        setTimeout(() => {
+            if (typeof config !== 'undefined' && config) {
+                configIsReady = true;
+                resolve(true);
+            } else {
+                // Retry with incremented count
+                ensureConfigLoaded(retryCount + 1, maxRetries)
+                    .then(resolve)
+                    .catch(() => {
+                        // Last resort - create a fallback config if all retries fail
+                        if (!configIsReady) {
+                            window.config = {
+                                ytTranscriptApiUrl: 'http://localhost:8000/yt-transcript',
+                                isYoutubeVideo: (url) => url && url.includes('youtube.com/watch?v=')
+                            };
+                            configIsReady = true;
+                            resolve(true);
+                        }
+                    });
+            }
+        }, delay);
+    });
+}
+
+// Try to initialize when the script loads
+ensureConfigLoaded()
+    .then(() => {
+        console.log('Config initialized successfully');
+    })
+    .catch(err => {
+        console.error('Config initialization failed, using fallback:', err);
+    });
 
 // Listen for messages from the background script
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -13,20 +64,126 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 
     if (request.action === "get_page_content") {
-        // Get the content of the page
+        // Always respond within the timeout period, even if there's an error
+        getPageContent()
+            .then(response => {
+                sendResponse(response);
+            })
+            .catch(error => {
+                console.error("Error getting page content:", error);
+                sendResponse({
+                    content: "Error retrieving page content.",
+                    title: document.title || "Unknown Page",
+                    url: window.location.href,
+                    isYouTubeVideo: false,
+                    error: error.message
+                });
+            });
+
+        return true; // Required for async sendResponse
+    }
+});
+
+// Function to get page content, including YouTube transcript if applicable
+async function getPageContent() {
+    try {
+        // Wait for config to be loaded before proceeding
+        try {
+            await ensureConfigLoaded();
+        } catch (configError) {
+            console.error('Config loading error:', configError);
+            // Continue with fallback behavior
+        }
+
+        // Get basic page information
         const pageContent = document.body.innerText;
         const pageTitle = document.title;
         const url = window.location.href;
 
-        // Send the content back to the requester
-        sendResponse({
-            content: pageContent,
-            title: pageTitle,
-            url: url
-        });
-        return true; // Required for async sendResponse
+        // Safely check if config exists and if this is a YouTube video
+        if (typeof config !== 'undefined' && config && config.isYoutubeVideo && config.isYoutubeVideo(url)) {
+            // Try to fetch the transcript if not already fetched
+            if (!videoTranscript) {
+                try {
+                    // Set a timeout to avoid hanging if the server doesn't respond
+                    const fetchPromise = fetchYouTubeTranscript(url);
+                    const timeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Transcript fetch timed out')), 3000)
+                    );
+
+                    videoTranscript = await Promise.race([fetchPromise, timeoutPromise]);
+                } catch (error) {
+                    console.error('Error fetching YouTube transcript:', error);
+                    videoTranscript = null; // Explicitly set to null on error
+                }
+            }
+
+            // Return content with transcript if available
+            return {
+                content: pageContent,
+                title: pageTitle,
+                url: url,
+                isYouTubeVideo: true,
+                transcript: videoTranscript || 'Transcript could not be loaded.'
+            };
+        } else {
+            // Return regular page content for non-YouTube pages or if config is not defined
+            return {
+                content: pageContent,
+                title: pageTitle,
+                url: url,
+                isYouTubeVideo: false
+            };
+        }
+    } catch (error) {
+        // Ensure we always return something even if there's an error
+        console.error('Error in getPageContent:', error);
+        return {
+            content: "Error retrieving page content.",
+            title: document.title || "Unknown Page",
+            url: window.location.href,
+            isYouTubeVideo: false,
+            error: error.message
+        };
     }
-});
+}
+
+// Function to fetch YouTube transcript
+async function fetchYouTubeTranscript(videoUrl) {
+    try {
+        // Check if config is defined
+        if (typeof config === 'undefined' || !config || !config.ytTranscriptApiUrl) {
+            console.error('Config is not properly defined for transcript fetching');
+            return null;
+        }
+
+        // Check if the local API is available first
+        const response = await fetch(config.ytTranscriptApiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ url: videoUrl })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch transcript: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Verify the transcript data exists
+        if (!data || !data.transcript) {
+            throw new Error('Invalid transcript data returned from API');
+        }
+
+        return data.transcript;
+    } catch (error) {
+        console.error('Error fetching transcript:', error);
+        // Return null instead of throwing to avoid breaking the promise chain
+        return null;
+    }
+}
 
 // Add this event listener to handle messages from the sidebar
 window.addEventListener('message', function (event) {

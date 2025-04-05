@@ -38,6 +38,7 @@
                 "<all_urls>"
             ],
             "js": [
+                "config.js",
                 "content.js"
             ]
         }
@@ -51,7 +52,8 @@
                 "lib/marked.min.js",
                 "sidebar.css",
                 "dark-mode-init.js",
-                "lib/purify.min.js"
+                "lib/purify.min.js",
+                "config.js"
             ],
             "matches": [
                 "<all_urls>"
