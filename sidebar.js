@@ -73,8 +73,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Close sidebar
     closeBtn.addEventListener('click', function () {
-        // Use Chrome's API to close the side panel
-        chrome.runtime.sendMessage({ action: "close_side_panel" });
+        // Send message to parent window (content.js)
+        window.parent.postMessage({ action: "close_sidebar" }, "*");
     });
 
     // Handle sending messages
@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function fetchPageContent() {
-        // Get page content from the active tab via background script
+        // Get page content from the active tab via chrome.tabs API
         chrome.runtime.sendMessage({ action: "get_page_content" }, function (response) {
             if (response) {
                 pageContent = response.content;

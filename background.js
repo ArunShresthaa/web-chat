@@ -4,15 +4,6 @@ function isExcludedDomain(url) {
     return url.match(/^https?:\/\/([^\/]+\.)?(google\.(com|co\.[a-z]{2,}|[a-z]{2})|youtube\.com)\/.*$/i) !== null;
 }
 
-// Set up the side panel when the extension is installed
-chrome.runtime.onInstalled.addListener(() => {
-    // Configure the side panel for all URLs
-    chrome.sidePanel.setOptions({
-        path: 'sidebar.html',
-        enabled: true
-    });
-});
-
 // Listen for tab updates to manage icon state
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     // Only process if URL is available
@@ -35,10 +26,29 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 chrome.action.onClicked.addListener(async (tab) => {
     if (tab.url && !isExcludedDomain(tab.url)) {
         try {
-            // Toggle the side panel
-            await chrome.sidePanel.open({ tabId: tab.id });
+            // Check if we can access the tab
+            await chrome.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: () => true
+            });
+
+            // If we can access the tab, send the message
+            chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" }).catch(error => {
+                // If content script is not loaded yet, inject it
+                if (error.message.includes("Receiving end does not exist")) {
+                    chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        files: ['content.js']
+                    }).then(() => {
+                        // Try sending the message again after injection
+                        setTimeout(() => {
+                            chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" });
+                        }, 100);
+                    });
+                }
+            });
         } catch (error) {
-            console.log("Error opening side panel:", error);
+            console.log("Cannot access this tab:", error);
         }
     }
 });
@@ -50,16 +60,29 @@ chrome.commands.onCommand.addListener(async (command) => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab && !isExcludedDomain(tab.url)) {
                 try {
-                    // Get the current state of the side panel
-                    const panelInfo = await chrome.sidePanel.getOptions({ tabId: tab.id });
+                    // Check if we can access the tab
+                    await chrome.scripting.executeScript({
+                        target: { tabId: tab.id },
+                        func: () => true
+                    });
 
-                    if (panelInfo.enabled) {
-                        // Toggle the side panel visibility
-                        const [currentTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                        await chrome.sidePanel.open({ tabId: currentTab.id });
-                    }
+                    // If we can access the tab, send the message
+                    chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" }).catch(error => {
+                        // If content script is not loaded yet, inject it
+                        if (error.message.includes("Receiving end does not exist")) {
+                            chrome.scripting.executeScript({
+                                target: { tabId: tab.id },
+                                files: ['content.js']
+                            }).then(() => {
+                                // Try sending the message again after injection
+                                setTimeout(() => {
+                                    chrome.tabs.sendMessage(tab.id, { action: "toggle_sidebar" });
+                                }, 100);
+                            });
+                        }
+                    });
                 } catch (error) {
-                    console.log("Error toggling side panel:", error);
+                    console.log("Cannot access this tab:", error);
                 }
             }
         } catch (error) {
@@ -80,16 +103,5 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
         return true; // Required for async sendResponse
-    }
-
-    if (request.action === "close_side_panel") {
-        // Close the side panel
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            if (tabs[0]) {
-                chrome.sidePanel.close({ tabId: tabs[0].id }).catch(error => {
-                    console.error("Error closing side panel:", error);
-                });
-            }
-        });
     }
 });

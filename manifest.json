@@ -6,8 +6,7 @@
     "permissions": [
         "activeTab",
         "scripting",
-        "storage",
-        "sidePanel"
+        "storage"
     ],
     "host_permissions": [
         "<all_urls>"
@@ -32,9 +31,6 @@
     },
     "background": {
         "service_worker": "background.js"
-    },
-    "side_panel": {
-        "default_path": "sidebar.html"
     },
     "content_scripts": [
         {
@@ -92,7 +88,8 @@
                 "sidebar.html",
                 "lib/highlight.min.js",
                 "lib/highlight.min.css",
-                "lib/marked.min.js"
+                "lib/marked.min.js",
+                "sidebar.css"
             ],
             "matches": [
                 "<all_urls>"
