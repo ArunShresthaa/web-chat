@@ -33,14 +33,22 @@
 
         <div class="api-key-container" id="api-key-container">
             <div class="api-key-card">
-                <h3>Enter Gemini API Key</h3>
-                <p>To use this chat interface, please enter your Gemini API key below:</p>
+                <h3>Enter API Key</h3>
+                <div class="api-selector">
+                    <label class="api-label">
+                        <input type="radio" name="api-type" value="gemini" checked> Gemini
+                    </label>
+                    <label class="api-label">
+                        <input type="radio" name="api-type" value="groq"> Groq
+                    </label>
+                </div>
+                <p>To use this chat interface, please enter your API key below:</p>
                 <div class="input-group">
-                    <input type="password" id="api-key-input" placeholder="Enter your Gemini API key">
+                    <input type="password" id="api-key-input" placeholder="Enter your API key">
                     <button id="save-api-key">Save</button>
                 </div>
                 <div class="help-text">
-                    Your API key is stored locally and is only used to communicate with the Gemini AI service.
+                    Your API key is stored locally and is only used to communicate with the selected AI service.
                 </div>
             </div>
         </div>

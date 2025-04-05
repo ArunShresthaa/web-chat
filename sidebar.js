@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const chatMessages = document.getElementById('chat-messages');
     const userInput = document.getElementById('user-input');
     const sendButton = document.getElementById('send-button');
+    const apiTypeRadios = document.getElementsByName('api-type');
 
     let pageContent = '';
     let pageTitle = '';
@@ -15,12 +16,16 @@ document.addEventListener('DOMContentLoaded', function () {
     let apiKey = '';
     let chatHistory = []; // Add this to store conversation history
     let darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let currentApiType = 'gemini'; // Default to Gemini API
 
     // Initialize dark mode
     initTheme();
 
     // Add dark mode toggle button to header
     addDarkModeToggle();
+
+    // Add API toggle button to header
+    addApiToggle();
 
     // Configure marked.js for markdown parsing
     marked.setOptions({
@@ -49,21 +54,59 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Check if API key is already stored
-    chrome.storage.local.get('geminiApiKey', function (data) {
-        if (data.geminiApiKey) {
+    chrome.storage.local.get(['geminiApiKey', 'groqApiKey', 'currentApiType'], function (data) {
+        // Set the API type if saved
+        if (data.currentApiType) {
+            currentApiType = data.currentApiType;
+            // Update radio button selection
+            for (let radio of apiTypeRadios) {
+                if (radio.value === currentApiType) {
+                    radio.checked = true;
+                    break;
+                }
+            }
+        }
+
+        // Get the appropriate API key based on current API type
+        if (currentApiType === 'gemini' && data.geminiApiKey) {
             apiKey = data.geminiApiKey;
+            apiKeyContainer.style.display = 'none';
+            chatContainer.style.display = 'flex';
+            fetchPageContent();
+        } else if (currentApiType === 'groq' && data.groqApiKey) {
+            apiKey = data.groqApiKey;
             apiKeyContainer.style.display = 'none';
             chatContainer.style.display = 'flex';
             fetchPageContent();
         }
     });
 
+    // Listen for API type selection changes
+    for (let radio of apiTypeRadios) {
+        radio.addEventListener('change', function () {
+            currentApiType = this.value;
+            // Check if we already have this API key stored
+            const keyToCheck = currentApiType === 'gemini' ? 'geminiApiKey' : 'groqApiKey';
+            chrome.storage.local.get(keyToCheck, function (data) {
+                if (data[keyToCheck]) {
+                    apiKey = data[keyToCheck];
+                    apiKeyInput.value = apiKey; // Update the input field
+                }
+            });
+        });
+    }
+
     // Save API key
     saveApiKeyBtn.addEventListener('click', function () {
         const key = apiKeyInput.value.trim();
         if (key) {
             apiKey = key;
-            chrome.storage.local.set({ 'geminiApiKey': key }, function () {
+
+            // Save the appropriate API key based on the selected API type
+            const storageKey = currentApiType === 'gemini' ? 'geminiApiKey' : 'groqApiKey';
+            const storageData = { [storageKey]: key, 'currentApiType': currentApiType };
+
+            chrome.storage.local.set(storageData, function () {
                 apiKeyContainer.style.display = 'none';
                 chatContainer.style.display = 'flex';
                 fetchPageContent();
@@ -231,7 +274,7 @@ document.addEventListener('DOMContentLoaded', function () {
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
-    // Modify sendToGeminiAPI to include chat history and handle YouTube transcripts
+    // Send message to the selected API (Gemini or Groq)
     function sendToGeminiAPI(userQuery, loadingElement) {
         // Create conversation context from history
         const conversationContext = chatHistory
@@ -245,96 +288,144 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (isYouTubeVideo) {
             prompt = `
-                You are a helpful assistant that answers questions about YouTube videos based on their transcripts.
-                
-                Current video: "${pageTitle}"
-                URL: ${pageUrl}
-                
-                Previous conversation context:
-                ${conversationContext}
-                
-                ${pageContent.substring(0, 15000)}
-                
-                User query: ${userQuery}
-                
-                Please answer the user's question based on the video transcript and previous conversation context.
-                If the answer isn't in the transcript, politely say so.
-                If asked about visual elements not described in the transcript, explain that you can only access the spoken content.
-                
-                IMPORTANT: Format your response using Markdown to improve readability.
-                - Use headings (##, ###) for organization
-                - Use **bold** or *italic* for emphasis
-                - Use \`code\` for technical terms or snippets
-                - Use bullet points or numbered lists for multiple items
-                - Use > for quotations from the transcript
-                
-                Keep your response concise and focused on answering the query.
-            `;
+                    You are a helpful assistant that answers questions about YouTube videos based on their transcripts.
+                    
+                    Current video: "${pageTitle}"
+                    URL: ${pageUrl}
+                    
+                    Previous conversation context:
+                    ${conversationContext}
+                    
+                    ${pageContent.substring(0, 15000)}
+                    
+                    User query: ${userQuery}
+                    
+                    Please answer the user's question based on the video transcript and previous conversation context.
+                    If the answer isn't in the transcript, politely say so.
+                    If asked about visual elements not described in the transcript, explain that you can only access the spoken content.
+                    
+                    IMPORTANT: Format your response using Markdown to improve readability.
+                    - Use headings (##, ###) for organization
+                    - Use **bold** or *italic* for emphasis
+                    - Use \`code\` for technical terms or snippets
+                    - Use bullet points or numbered lists for multiple items
+                    - Use > for quotations from the transcript
+                    
+                    Keep your response concise and focused on answering the query.
+                `;
         } else {
             prompt = `
-                You are a helpful assistant that answers questions about webpage content.
-                
-                Current webpage: "${pageTitle}"
-                URL: ${pageUrl}
-                
-                Previous conversation context:
-                ${conversationContext}
-                
-                Content of the webpage:
-                '''
-                ${pageContent.substring(0, 12000)}
-                '''
-                
-                User query: ${userQuery}
-                
-                Please answer the user's question based on the webpage content and previous conversation context.
-                If the answer isn't in the content, politely say so.
-                
-                IMPORTANT: Format your response using Markdown to improve readability.
-                - Use headings (##, ###) for organization
-                - Use **bold** or *italic* for emphasis
-                - Use \`code\` for technical terms or snippets
-                - Use bullet points or numbered lists for multiple items
-                - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
-                - Use > for quotations from the page
-                
-                But keep your response concise and focused on answering the query.
-            `;
+                    You are a helpful assistant that answers questions about webpage content.
+                    
+                    Current webpage: "${pageTitle}"
+                    URL: ${pageUrl}
+                    
+                    Previous conversation context:
+                    ${conversationContext}
+                    
+                    Content of the webpage:
+                    '''
+                    ${pageContent.substring(0, 12000)}
+                    '''
+                    
+                    User query: ${userQuery}
+                    
+                    Please answer the user's question based on the webpage content and previous conversation context.
+                    If the answer isn't in the content, politely say so.
+                    
+                    IMPORTANT: Format your response using Markdown to improve readability.
+                    - Use headings (##, ###) for organization
+                    - Use **bold** or *italic* for emphasis
+                    - Use \`code\` for technical terms or snippets
+                    - Use bullet points or numbered lists for multiple items
+                    - Use code blocks with language specification for code snippets (e.g., \`\`\`javascript)
+                    - Use > for quotations from the page
+                    
+                    But keep your response concise and focused on answering the query.
+                `;
         }
 
-        fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
+        // Based on API type, send to different endpoints with appropriate formatting
+        if (currentApiType === 'gemini') {
+            // Gemini API request
+            fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: prompt
+                        }]
                     }]
-                }]
+                })
             })
-        })
-            .then(response => response.json())
-            .then(data => {
-                // Remove loading indicator
-                chatMessages.removeChild(loadingElement);
+                .then(response => response.json())
+                .then(data => {
+                    // Remove loading indicator
+                    chatMessages.removeChild(loadingElement);
 
-                // Check if we have a valid response
-                if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-                    const responseText = data.candidates[0].content.parts[0].text;
-                    appendMessage(responseText, 'bot');
-                } else if (data.error) {
-                    appendMessage(`**Error:** ${data.error.message || 'Failed to get response from Gemini'}`, 'bot');
-                } else {
-                    appendMessage(`**Sorry!** I couldn't generate a response. Please try again.`, 'bot');
-                }
+                    // Check if we have a valid response
+                    if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+                        const responseText = data.candidates[0].content.parts[0].text;
+                        appendMessage(responseText, 'bot');
+                    } else if (data.error) {
+                        appendMessage(`**Error:** ${data.error.message || 'Failed to get response from Gemini'}`, 'bot');
+                    } else {
+                        appendMessage(`**Sorry!** I couldn't generate a response. Please try again.`, 'bot');
+                    }
+                })
+                .catch(error => {
+                    chatMessages.removeChild(loadingElement);
+                    appendMessage(`**Error:** ${error.message || 'Failed to connect to Gemini API'}`, 'bot');
+                    console.error('Error:', error);
+                });
+        } else {
+            // Groq API request
+            fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: "llama3-70b-8192", // Using Llama3 model
+                    messages: [
+                        {
+                            role: "system",
+                            content: "You are a helpful assistant that analyzes webpage content and responds to user queries."
+                        },
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2048
+                })
             })
-            .catch(error => {
-                chatMessages.removeChild(loadingElement);
-                appendMessage(`**Error:** ${error.message || 'Failed to connect to Gemini API'}`, 'bot');
-                console.error('Error:', error);
-            });
+                .then(response => response.json())
+                .then(data => {
+                    // Remove loading indicator
+                    chatMessages.removeChild(loadingElement);
+
+                    // Check if we have a valid response
+                    if (data.choices && data.choices[0] && data.choices[0].message) {
+                        const responseText = data.choices[0].message.content;
+                        appendMessage(responseText, 'bot');
+                    } else if (data.error) {
+                        appendMessage(`**Error:** ${data.error.message || 'Failed to get response from Groq'}`, 'bot');
+                    } else {
+                        appendMessage(`**Sorry!** I couldn't generate a response. Please try again.`, 'bot');
+                    }
+                })
+                .catch(error => {
+                    chatMessages.removeChild(loadingElement);
+                    appendMessage(`**Error:** ${error.message || 'Failed to connect to Groq API'}`, 'bot');
+                    console.error('Error:', error);
+                });
+        }
     }
 
     // Add function to clear chat history
@@ -366,13 +457,13 @@ document.addEventListener('DOMContentLoaded', function () {
         const clearButton = document.createElement('button');
         clearButton.id = 'clear-chat';
         clearButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18"></path>
-                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-            </svg>
-        `;
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 6h18"></path>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+                </svg>
+            `;
         clearButton.setAttribute('aria-label', 'Clear chat');
         clearButton.addEventListener('click', clearChat);
         headerLogo.appendChild(clearButton);
@@ -407,22 +498,22 @@ document.addEventListener('DOMContentLoaded', function () {
         button.innerHTML = darkMode ?
             // Sun icon for light mode
             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="5"></circle>
-                <line x1="12" y1="1" x2="12" y2="3"></line>
-                <line x1="12" y1="21" x2="12" y2="23"></line>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-                <line x1="1" y1="12" x2="3" y2="12"></line>
-                <line x1="21" y1="12" x2="23" y2="12"></line>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
-            </svg>` :
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                </svg>` :
             // Moon icon for dark mode
             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-            </svg>`;
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 A7 7 0 0 0 21 12.79z"></path>
+                </svg>`;
     }
 
     function initTheme() {
@@ -455,5 +546,74 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             document.documentElement.setAttribute('data-theme', 'light');
         }
+    }
+
+    // Add API toggle button to the header
+    function addApiToggle() {
+        const headerLogo = document.querySelector('.header-logo');
+        const apiToggleButton = document.createElement('button');
+        apiToggleButton.id = 'api-toggle';
+        apiToggleButton.setAttribute('aria-label', 'Toggle between Gemini and Groq APIs');
+
+        // Set initial icon based on current API
+        updateApiToggleIcon(apiToggleButton);
+
+        apiToggleButton.addEventListener('click', () => {
+            // Toggle between Gemini and Groq
+            currentApiType = currentApiType === 'gemini' ? 'groq' : 'gemini';
+
+            // Check if we have a key for the selected API
+            const keyToCheck = currentApiType === 'gemini' ? 'geminiApiKey' : 'groqApiKey';
+            chrome.storage.local.get(keyToCheck, function (data) {
+                if (data[keyToCheck]) {
+                    // If we have a key, use it
+                    apiKey = data[keyToCheck];
+                    updateApiToggleIcon(apiToggleButton);
+
+                    // Save the preference
+                    chrome.storage.local.set({ 'currentApiType': currentApiType });
+
+                    // Show a message indicating API change
+                    appendMessage(`Switched to ${currentApiType === 'gemini' ? 'Gemini' : 'Groq'} API. You can continue chatting.`, 'system');
+                } else {
+                    // If we don't have a key, prompt for one
+                    appendMessage(`Please enter your ${currentApiType === 'gemini' ? 'Gemini' : 'Groq'} API key in the settings.`, 'system');
+
+                    // Go back to the previous API since we don't have a key for the new one
+                    currentApiType = currentApiType === 'gemini' ? 'groq' : 'gemini';
+                    updateApiToggleIcon(apiToggleButton);
+
+                    // Show the API key container
+                    apiKeyContainer.style.display = 'flex';
+                    chatContainer.style.display = 'none';
+
+                    // Update the radio button selection
+                    for (let radio of apiTypeRadios) {
+                        if (radio.value === currentApiType) {
+                            radio.checked = true;
+                            break;
+                        }
+                    }
+                }
+            });
+        });
+
+        headerLogo.appendChild(apiToggleButton);
+    }
+
+    function updateApiToggleIcon(button) {
+        button.innerHTML = currentApiType === 'gemini' ?
+            // Gemini icon (simplified Google G)
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="api-toggle-gemini">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 8v8"></path>
+                    <path d="M8 12h8"></path>
+                </svg>` :
+            // Groq icon (simplified lightning bolt)
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="api-toggle-groq">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                </svg>`;
     }
 });
