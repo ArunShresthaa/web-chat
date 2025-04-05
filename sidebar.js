@@ -14,6 +14,13 @@ document.addEventListener('DOMContentLoaded', function () {
     let pageUrl = '';
     let apiKey = '';
     let chatHistory = []; // Add this to store conversation history
+    let darkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Initialize dark mode
+    initTheme();
+
+    // Add dark mode toggle button to header
+    addDarkModeToggle();
 
     // Configure marked.js for markdown parsing
     marked.setOptions({
@@ -66,8 +73,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Close sidebar
     closeBtn.addEventListener('click', function () {
-        // Send message to parent window (content.js) instead of using chrome.tabs directly
-        window.parent.postMessage({ action: "close_sidebar" }, "*");
+        // Use Chrome's API to close the side panel
+        chrome.runtime.sendMessage({ action: "close_side_panel" });
     });
 
     // Handle sending messages
@@ -80,18 +87,16 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     function fetchPageContent() {
-        // Get page content from the active tab
-        chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, { action: "get_page_content" }, function (response) {
-                if (response) {
-                    pageContent = response.content;
-                    pageTitle = response.title;
-                    pageUrl = response.url;
+        // Get page content from the active tab via background script
+        chrome.runtime.sendMessage({ action: "get_page_content" }, function (response) {
+            if (response) {
+                pageContent = response.content;
+                pageTitle = response.title;
+                pageUrl = response.url;
 
-                    // Add a welcome message with the page title
-                    appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
-                }
-            });
+                // Add a welcome message with the page title
+                appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
+            }
         });
     }
 
@@ -306,4 +311,80 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Call this when the page loads
     addClearChatButton();
+
+    // Add this function to add a dark mode toggle button
+    function addDarkModeToggle() {
+        const headerLogo = document.querySelector('.header-logo');
+        const darkModeButton = document.createElement('button');
+        darkModeButton.id = 'dark-mode-toggle';
+        darkModeButton.setAttribute('aria-label', 'Toggle dark mode');
+
+        // Set initial icon based on current mode
+        updateDarkModeIcon(darkModeButton);
+
+        darkModeButton.addEventListener('click', () => {
+            darkMode = !darkMode;
+            updateTheme();
+            updateDarkModeIcon(darkModeButton);
+
+            // Save preference to storage
+            chrome.storage.local.set({ 'darkModeEnabled': darkMode });
+        });
+
+        headerLogo.appendChild(darkModeButton);
+    }
+
+    function updateDarkModeIcon(button) {
+        button.innerHTML = darkMode ?
+            // Sun icon for light mode
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>` :
+            // Moon icon for dark mode
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" 
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>`;
+    }
+
+    function initTheme() {
+        // Check if user has a saved preference
+        chrome.storage.local.get('darkModeEnabled', (data) => {
+            if (data.darkModeEnabled !== undefined) {
+                darkMode = data.darkModeEnabled;
+                updateTheme();
+            }
+        });
+
+        // Listen for system preference changes
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)')
+                .addEventListener('change', e => {
+                    // Only update if user hasn't set a preference
+                    chrome.storage.local.get('darkModeEnabled', (data) => {
+                        if (data.darkModeEnabled === undefined) {
+                            darkMode = e.matches;
+                            updateTheme();
+                        }
+                    });
+                });
+        }
+    }
+
+    function updateTheme() {
+        if (darkMode) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        } else {
+            document.documentElement.setAttribute('data-theme', 'light');
+        }
+    }
 });

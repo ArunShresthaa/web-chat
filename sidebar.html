@@ -9,6 +9,12 @@
     <link rel="stylesheet" href="lib/highlight.min.css">
     <script src="lib/highlight.min.js"></script>
     <script src="lib/marked.min.js"></script>
+    <script>
+        // Immediately apply system dark mode preference to avoid flashing
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </head>
 
 <body>
@@ -19,7 +25,7 @@
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
                 </svg>
-                <h2>Website Chat</h2>
+                <h2>Website Chat - Side Panel</h2>
             </div>
             <button id="close-btn" aria-label="Close sidebar">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"

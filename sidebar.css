@@ -11,30 +11,71 @@
     --bot-message-bg: #f3f4f6;
     --system-message-bg: #fef3c7;
     --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  }
-  
-  * {
+    --code-bg: #f1f5f9;
+    --pre-bg: #f8fafc;
+}
+
+/* Dark mode support via data attribute (for toggle) */
+html[data-theme="dark"] {
+    --primary-color: #6366f1;
+    --primary-hover: #4f46e5;
+    --bg-color: #111827;
+    --chat-bg: #1f2937;
+    --text-color: #f9fafb;
+    --text-light: #d1d5db;
+    --border-color: #374151;
+    --user-message-bg: #4338ca;
+    --bot-message-bg: #374151;
+    --system-message-bg: #78350f;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+    --code-bg: #1e293b;
+    --pre-bg: #1e293b;
+}
+
+/* Dark mode support via system preference */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary-color: #6366f1;
+        --primary-hover: #4f46e5;
+        --bg-color: #111827;
+        --chat-bg: #1f2937;
+        --text-color: #f9fafb;
+        --text-light: #d1d5db;
+        --border-color: #374151;
+        --user-message-bg: #4338ca;
+        --bot-message-bg: #374151;
+        --system-message-bg: #78350f;
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
+        --code-bg: #1e293b;
+        --pre-bg: #1e293b;
+    }
+}
+
+* {
     box-sizing: border-box;
-  }
-  
-  body, html {
+}
+
+body, html {
     margin: 0;
     padding: 0;
     height: 100%;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     background-color: var(--bg-color);
     color: var(--text-color);
-  }
-  
-  .sidebar-container {
+    width: 100%;
+    overflow: hidden;
+}
+
+.sidebar-container {
     display: flex;
     flex-direction: column;
     height: 100%;
-    border-left: 1px solid var(--border-color);
+    width: 100%;
     overflow: hidden;
-  }
-  
-  .sidebar-header {
+    border-left: 1px solid var(--border-color);
+}
+
+.sidebar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -42,21 +83,21 @@
     background-color: var(--primary-color);
     color: white;
     box-shadow: var(--shadow);
-  }
-  
-  .header-logo {
+}
+
+.header-logo {
     display: flex;
     align-items: center;
     gap: 8px;
-  }
-  
-  .sidebar-header h2 {
+}
+
+.sidebar-header h2 {
     margin: 0;
     font-size: 16px;
     font-weight: 600;
-  }
-  
-  #close-btn {
+}
+
+#close-btn {
     background: none;
     border: none;
     color: white;
@@ -67,58 +108,60 @@
     padding: 4px;
     border-radius: 4px;
     transition: background-color 0.2s;
-  }
-  
-  #close-btn:hover {
+}
+
+#close-btn:hover {
     background-color: rgba(255, 255, 255, 0.1);
-  }
-  
-  /* API Key Container Styles */
-  .api-key-container {
+}
+
+/* API Key Container Styles */
+.api-key-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
     padding: 20px;
-  }
-  
-  .api-key-card {
-    background-color: white;
+}
+
+.api-key-card {
+    background-color: var(--chat-bg);
     border-radius: 8px;
     padding: 24px;
     width: 100%;
     max-width: 400px;
     box-shadow: var(--shadow);
-  }
-  
-  .api-key-card h3 {
+}
+
+.api-key-card h3 {
     margin-top: 0;
     margin-bottom: 12px;
     font-size: 18px;
     color: var(--text-color);
-  }
-  
-  .api-key-card p {
+}
+
+.api-key-card p {
     margin-bottom: 16px;
     color: var(--text-light);
     font-size: 14px;
-  }
-  
-  .input-group {
+}
+
+.input-group {
     display: flex;
     margin-bottom: 12px;
-  }
-  
-  #api-key-input {
+}
+
+#api-key-input {
     flex: 1;
     padding: 10px 12px;
     border: 1px solid var(--border-color);
     border-radius: 6px 0 0 6px;
     font-size: 14px;
-  }
-  
-  #save-api-key {
+    background-color: var(--chat-bg);
+    color: var(--text-color);
+}
+
+#save-api-key {
     background-color: var(--primary-color);
     color: white;
     border: none;
@@ -127,72 +170,72 @@
     font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s;
-  }
-  
-  #save-api-key:hover {
+}
+
+#save-api-key:hover {
     background-color: var(--primary-hover);
-  }
-  
-  .help-text {
+}
+
+.help-text {
     font-size: 12px;
     color: var(--text-light);
-  }
-  
-  /* Chat Container Styles */
-  .chat-container {
+}
+
+/* Chat Container Styles */
+.chat-container {
     display: flex;
     flex-direction: column;
     height: 100%;
     background-color: var(--chat-bg);
     overflow: hidden;
-  }
-  
-  .chat-messages {
+}
+
+.chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 16px;
     scrollbar-width: thin;
     scrollbar-color: var(--text-light) transparent;
-  }
-  
-  .chat-messages::-webkit-scrollbar {
+}
+
+.chat-messages::-webkit-scrollbar {
     width: 6px;
-  }
-  
-  .chat-messages::-webkit-scrollbar-track {
+}
+
+.chat-messages::-webkit-scrollbar-track {
     background: transparent;
-  }
-  
-  .chat-messages::-webkit-scrollbar-thumb {
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
     background-color: var(--text-light);
     border-radius: 20px;
-  }
-  
-  .message {
+}
+
+.message {
     margin-bottom: 16px;
     max-width: 90%;
     display: flex;
     flex-direction: column;
     position: relative;
-  }
-  
-  .message.user {
+}
+
+.message.user {
     align-self: flex-end;
     margin-left: auto;
-  }
-  
-  .message.bot {
+}
+
+.message.bot {
     align-self: flex-start;
     margin-right: auto;
-  }
-  
-  .message.system {
+}
+
+.message.system {
     align-self: center;
     margin: 12px auto;
     max-width: 85%;
-  }
-  
-  .message-content {
+}
+
+.message-content {
     padding: 12px 16px;
     border-radius: 12px;
     font-size: 14px;
@@ -200,35 +243,35 @@
     word-wrap: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
-  }
-  
-  .user .message-content {
+}
+
+.user .message-content {
     background-color: var(--user-message-bg);
     border-bottom-right-radius: 4px;
     color: var(--text-color);
-  }
-  
-  .bot .message-content {
+}
+
+.bot .message-content {
     background-color: var(--bot-message-bg);
     border-bottom-left-radius: 4px;
     color: var(--text-color);
-  }
-  
-  .system .message-content {
+}
+
+.system .message-content {
     background-color: var(--system-message-bg);
     color: var(--text-color);
     text-align: center;
-  }
-  
-  .chat-input-container {
+}
+
+.chat-input-container {
     display: flex;
     padding: 12px 16px;
     border-top: 1px solid var(--border-color);
-    background-color: white;
+    background-color: var(--chat-bg);
     align-items: center;
-  }
-  
-  #user-input {
+}
+
+#user-input {
     flex: 1;
     padding: 12px;
     border: 1px solid var(--border-color);
@@ -240,6 +283,7 @@
     max-height: 120px;
     overflow-y: auto;
     transition: border-color 0.2s;
+    background-color: var(--chat-bg);
   }
   
   #user-input:focus {
@@ -270,9 +314,9 @@
     display: inline-block;
     width: 16px;
     height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+    border: 2px solid rgba(128, 128, 128, 0.3);
     border-radius: 50%;
-    border-top-color: white;
+    border-top-color: var(--text-color);
     animation: spin 1s ease-in-out infinite;
   }
   
@@ -375,7 +419,7 @@
   }
   
   .markdown-content table th {
-    background-color: #f9fafb;
+    background-color: var(--bg-color);
   }
   
   .markdown-content img {
@@ -400,19 +444,22 @@
   #clear-chat:hover {
     background-color: rgba(255, 255, 255, 0.1);
   }
-  
-  #website-chat-resize-handle {
-    background-color: transparent;
+
+/* Style for dark mode toggle button */
+#dark-mode-toggle {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border-radius: 4px;
+    margin-left: 8px;
     transition: background-color 0.2s;
-  }
-  
-  #website-chat-resize-handle:hover,
-  #website-chat-resize-handle:active {
-    background-color: var(--primary-color);
-    opacity: 0.5;
-  }
-  
-  #resize-overlay {
-    cursor: ew-resize;
-    background: transparent;
-  }
+}
+
+#dark-mode-toggle:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
