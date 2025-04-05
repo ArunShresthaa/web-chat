@@ -9,12 +9,7 @@
     <link rel="stylesheet" href="lib/highlight.min.css">
     <script src="lib/highlight.min.js"></script>
     <script src="lib/marked.min.js"></script>
-    <script>
-        // Immediately apply system dark mode preference to avoid flashing
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-            document.documentElement.setAttribute('data-theme', 'dark');
-        }
-    </script>
+    <script src="dark-mode-init.js"></script>
 </head>
 
 <body>

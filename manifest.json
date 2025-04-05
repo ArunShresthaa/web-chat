@@ -89,7 +89,9 @@
                 "lib/highlight.min.js",
                 "lib/highlight.min.css",
                 "lib/marked.min.js",
-                "sidebar.css"
+                "sidebar.css",
+                "dark-mode-init.js",
+                "lib/purify.min.js"
             ],
             "matches": [
                 "<all_urls>"
