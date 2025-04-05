@@ -29,11 +29,12 @@ function ensureConfigLoaded(retryCount = 0, maxRetries = 5) {
                 ensureConfigLoaded(retryCount + 1, maxRetries)
                     .then(resolve)
                     .catch(() => {
-                        // Last resort - create a fallback config if all retries fail
+                        // Create a minimal fallback config with just identification capability
+                        // but no transcript functionality
                         if (!configIsReady) {
                             window.config = {
-                                ytTranscriptApiUrl: 'http://localhost:8000/yt-transcript',
-                                isYoutubeVideo: (url) => url && url.includes('youtube.com/watch?v=')
+                                isYoutubeVideo: (url) => url && url.includes('youtube.com/watch?v='),
+                                transcriptUnavailable: true
                             };
                             configIsReady = true;
                             resolve(true);
@@ -102,6 +103,18 @@ async function getPageContent() {
 
         // Safely check if config exists and if this is a YouTube video
         if (typeof config !== 'undefined' && config && config.isYoutubeVideo && config.isYoutubeVideo(url)) {
+            // Check if transcript access is unavailable due to config issues
+            if (config.transcriptUnavailable) {
+                return {
+                    content: pageContent,
+                    title: pageTitle,
+                    url: url,
+                    isYouTubeVideo: true,
+                    transcript: "I don't have access to the YouTube transcript for this video.",
+                    transcriptUnavailable: true
+                };
+            }
+
             // Try to fetch the transcript if not already fetched
             if (!videoTranscript) {
                 try {
@@ -124,7 +137,7 @@ async function getPageContent() {
                 title: pageTitle,
                 url: url,
                 isYouTubeVideo: true,
-                transcript: videoTranscript || 'Transcript could not be loaded.'
+                transcript: videoTranscript || "I don't have access to the YouTube transcript for this video."
             };
         } else {
             // Return regular page content for non-YouTube pages or if config is not defined

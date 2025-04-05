@@ -96,15 +96,21 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 // Check if this is a YouTube video with transcript
                 if (response.isYouTubeVideo) {
-                    // Store transcript in context for the chat
-                    if (response.transcript) {
+                    // Check if transcript is truly available (not just a placeholder message)
+                    const hasTranscript = response.transcript &&
+                        !response.transcriptUnavailable &&
+                        !response.transcript.includes("don't have access") &&
+                        response.transcript.length > 50; // Real transcripts should be longer than this
+
+                    if (hasTranscript) {
+                        // Store transcript in context for the chat
                         pageContent = `[VIDEO TRANSCRIPT]: ${response.transcript}\n\n[PAGE CONTENT]: ${pageContent}`;
 
-                        // Add a welcome message specific to YouTube videos
+                        // Add a welcome message specific to YouTube videos with transcript
                         appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. I have access to the video transcript. What would you like to discuss about this video?`, 'bot');
                     } else {
                         // No transcript available
-                        appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. What would you like to discuss about this video?`, 'bot');
+                        appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. However, I don't have access to the video transcript, so I can only discuss what's visible on the page. What would you like to know?`, 'bot');
                     }
                 } else {
                     // Regular page content
@@ -336,12 +342,18 @@ document.addEventListener('DOMContentLoaded', function () {
         chatHistory = [];
         chatMessages.innerHTML = '';
 
-        // Check if this is a YouTube video page
-        const isYouTubeVideo = pageContent.includes('[VIDEO TRANSCRIPT]:');
+        // Check if this is a YouTube video page with a real transcript
+        const hasRealTranscript = pageContent.includes('[VIDEO TRANSCRIPT]:') &&
+            pageContent.split('[VIDEO TRANSCRIPT]:')[1].split('[PAGE CONTENT]:')[0].trim().length > 50;
+
+        // Check if this is a YouTube video without transcript
+        const isYouTubeWithoutTranscript = pageUrl.includes('youtube.com/watch?v=') && !hasRealTranscript;
 
         // Add initial welcome message based on page type
-        if (isYouTubeVideo) {
+        if (hasRealTranscript) {
             appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. I have access to the video transcript. What would you like to discuss about this video?`, 'bot');
+        } else if (isYouTubeWithoutTranscript) {
+            appendMessage(`I'm ready to help you chat about this YouTube video: **"${pageTitle}"**. However, I don't have access to the video transcript, so I can only discuss what's visible on the page. What would you like to know?`, 'bot');
         } else {
             // Regular page content
             appendMessage(`I'm ready to help you with information about **"${pageTitle}"**. What would you like to know?`, 'bot');
