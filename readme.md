@@ -123,6 +123,15 @@ No build process required - the extension can be loaded directly as unpacked.
 
 ## Demo
 
+<div style="display: flex; overflow-x: auto; gap: 20px; padding: 10px;">
+  <img src="docs/images/blog read help.png" style="height: 200px;">
+  <img src="docs/images/get insights of forums.png" style="height: 200px;">
+  <img src="docs/images/list questions.png" style="height: 200px;">
+  <img src="docs/images/question about yt video.png" style="height: 200px;">
+  <img src="docs/images/summarize news.png" style="height: 200px;">
+  <img src="docs/images/youtube video summary.png" style="height: 200px;">
+</div>
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
