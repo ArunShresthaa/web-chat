@@ -121,6 +121,8 @@ No build process required - the extension can be loaded directly as unpacked.
 - Works only on regular webpages (not on Chrome Web Store or other restricted pages)
 - Requires active internet connection for API communication
 
+## Demo
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
